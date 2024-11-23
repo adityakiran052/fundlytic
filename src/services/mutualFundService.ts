@@ -22,11 +22,12 @@ export interface HistoricalData {
 export const getMutualFunds = async (): Promise<MutualFund[]> => {
   console.log('Fetching mutual funds list');
   try {
+    // Using the mfapi.in API for Indian mutual funds
     const response = await axios.get(`${BASE_URL}/mf`);
-    return response.data.map((fund: any) => ({
+    return response.data.slice(0, 20).map((fund: any) => ({
       id: fund.schemeCode,
       name: fund.schemeName,
-      nav: parseFloat(fund.nav),
+      nav: parseFloat(fund.nav || '0'),
       aum: fund.aum || 'N/A',
       return1y: fund.return1y || 'N/A',
       return3y: fund.return3y || 'N/A',
@@ -43,9 +44,9 @@ export const getFundHistory = async (fundId: string): Promise<HistoricalData[]> 
   console.log(`Fetching history for fund ${fundId}`);
   try {
     const response = await axios.get(`${BASE_URL}/mf/${fundId}`);
-    return response.data.data.map((item: any) => ({
+    return response.data.data.slice(0, 365).map((item: any) => ({
       date: item.date,
-      nav: parseFloat(item.nav)
+      nav: parseFloat(item.nav || '0')
     }));
   } catch (error) {
     console.error('Error fetching fund history:', error);

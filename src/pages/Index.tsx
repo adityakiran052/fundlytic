@@ -4,11 +4,13 @@ import { DollarSign, TrendingUp, PieChart, Search } from "lucide-react";
 import { getMutualFunds, type MutualFund } from "../services/mutualFundService";
 import { FundDetails } from "../components/FundDetails";
 import { Input } from "../components/ui/input";
+import { Card } from "../components/ui/card";
 
 interface Portfolio {
   [fundId: string]: {
     units: number;
     fund: MutualFund;
+    purchaseNav: number;
   };
 }
 
@@ -17,7 +19,7 @@ const Index = () => {
   const [selectedFund, setSelectedFund] = useState<MutualFund | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio>({});
 
-  const { data: funds = [] } = useQuery({
+  const { data: funds = [], isLoading } = useQuery({
     queryKey: ['mutualFunds'],
     queryFn: getMutualFunds,
   });
@@ -31,17 +33,26 @@ const Index = () => {
     0
   );
 
+  const totalReturns = Object.values(portfolio).reduce((total, { units, fund, purchaseNav }) => {
+    const currentValue = units * fund.nav;
+    const investedValue = units * purchaseNav;
+    return total + (currentValue - investedValue);
+  }, 0);
+
   const handleBuy = (fund: MutualFund, units: number) => {
+    console.log(`Buying ${units} units of ${fund.name}`);
     setPortfolio(prev => ({
       ...prev,
       [fund.id]: {
         units: (prev[fund.id]?.units || 0) + units,
-        fund
+        fund,
+        purchaseNav: fund.nav
       }
     }));
   };
 
   const handleSell = (fund: MutualFund, units: number) => {
+    console.log(`Selling ${units} units of ${fund.name}`);
     setPortfolio(prev => {
       const currentUnits = prev[fund.id]?.units || 0;
       if (currentUnits < units) {
@@ -56,12 +67,16 @@ const Index = () => {
       return {
         ...prev,
         [fund.id]: {
+          ...prev[fund.id],
           units: newUnits,
-          fund
         }
       };
     });
   };
+
+  if (isLoading) {
+    return <div className="min-h-screen p-6">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen p-6 animate-fade-in">
@@ -81,7 +96,7 @@ const Index = () => {
               <p className="text-2xl font-bold">₹{portfolioValue.toFixed(2)}</p>
             </div>
           </div>
-          <div className="text-green-400 text-sm">Updated in real-time</div>
+          <div className="text-green-400 text-sm">Live value</div>
         </div>
 
         <div className="glass-card p-6 rounded-xl">
@@ -90,11 +105,13 @@ const Index = () => {
               <TrendingUp className="text-accent h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-400">Total Return</p>
-              <p className="text-2xl font-bold">+24.8%</p>
+              <p className="text-sm text-gray-400">Total Returns</p>
+              <p className="text-2xl font-bold text-green-400">
+                ₹{totalReturns.toFixed(2)} ({((totalReturns / (portfolioValue - totalReturns)) * 100).toFixed(2)}%)
+              </p>
             </div>
           </div>
-          <div className="text-primary text-sm">+5.2% this month</div>
+          <div className="text-primary text-sm">Live returns</div>
         </div>
 
         <div className="glass-card p-6 rounded-xl">
@@ -104,10 +121,10 @@ const Index = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-400">Funds Invested</p>
-              <p className="text-2xl font-bold">8</p>
+              <p className="text-2xl font-bold">{Object.keys(portfolio).length}</p>
             </div>
           </div>
-          <div className="text-gray-400 text-sm">Across 4 categories</div>
+          <div className="text-gray-400 text-sm">Active investments</div>
         </div>
       </div>
 
@@ -128,9 +145,9 @@ const Index = () => {
           </div>
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
             {filteredFunds.map((fund) => (
-              <div
+              <Card
                 key={fund.id}
-                className="p-4 rounded-lg bg-dark-lighter hover:bg-dark transition-colors cursor-pointer"
+                className="p-4 hover:bg-card-hover transition-colors cursor-pointer"
                 onClick={() => setSelectedFund(fund)}
               >
                 <div className="flex justify-between items-center">
@@ -138,9 +155,16 @@ const Index = () => {
                     <h3 className="font-medium">{fund.name}</h3>
                     <p className="text-sm text-gray-400">NAV: ₹{fund.nav}</p>
                   </div>
-                  <div className="text-green-400 font-medium">{fund.return1y}</div>
+                  <div>
+                    <p className="text-green-400 font-medium">{fund.return1y}</p>
+                    {portfolio[fund.id] && (
+                      <p className="text-sm text-gray-400">
+                        Units: {portfolio[fund.id].units}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -151,6 +175,7 @@ const Index = () => {
               fund={selectedFund}
               onBuy={handleBuy}
               onSell={handleSell}
+              currentHolding={portfolio[selectedFund.id]}
             />
           ) : (
             <div className="text-center text-gray-400">
