@@ -11,16 +11,31 @@ const Login = () => {
 
   useEffect(() => {
     // Check if user is already logged in
-    supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log("User already authenticated:", session.user.id);
+        navigate("/");
+      }
+    };
+    
+    checkSession();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
+      console.log("Auth state changed:", event);
       if (session) {
         console.log("User authenticated:", session.user.id);
         navigate("/");
       }
-      // Handle signup errors through the auth state change event
       if (event === "SIGNED_OUT" && !session) {
         toast.error("This email is already registered. Please try logging in instead.");
       }
     });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   return (
