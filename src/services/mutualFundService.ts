@@ -21,22 +21,28 @@ export interface HistoricalData {
 export const getMutualFunds = async (): Promise<MutualFund[]> => {
   console.log('Fetching mutual funds list');
   try {
-    // Using unique fund IDs to prevent duplicates
+    // Using more reliable fund IDs that consistently return data
     const fundIds = [
-      '100034', '100037', '100041', '100044', '100047',
-      '100052', '100058', '100063', '100069', '100074',
-      '100078', '100082', '100085', '100087', '100089',
-      '100091', '100093', '100095', '100097', '100099'
+      '119598', // SBI Blue Chip Fund
+      '119551', // HDFC Top 100 Fund
+      '120505', // ICICI Prudential Bluechip Fund
+      '120178', // Axis Bluechip Fund
+      '118989', // Kotak Bluechip Fund
+      '119235', // Nippon India Large Cap Fund
+      '120753', // Tata Large Cap Fund
+      '119062', // DSP Top 100 Equity Fund
+      '119815', // UTI Mastershare Unit Scheme
+      '120243'  // L&T Large Cap Fund
     ];
 
-    const fundsData = await Promise.all(
+    const fundsData = await Promise.allSettled(
       fundIds.map(async (id) => {
         try {
           console.log(`Fetching data for fund ${id}`);
           const response = await axios.get(`${BASE_URL}/mf/${id}`);
           
-          if (!response.data || !response.data.data || response.data.data.length === 0) {
-            console.error(`No data received for fund ${id}`);
+          if (!response.data?.data?.[0]) {
+            console.error(`Invalid data structure received for fund ${id}`);
             return null;
           }
 
@@ -47,24 +53,29 @@ export const getMutualFunds = async (): Promise<MutualFund[]> => {
           
           return {
             id,
-            name: response.data.meta.scheme_name,
+            name: response.data.meta.scheme_name || `Fund ${id}`,
             nav: latestNAV,
-            aum: 'N/A',
+            aum: response.data.meta.aum || 'N/A',
             return1y,
             return3y: 'N/A',
             category: response.data.meta.scheme_category || 'N/A',
             riskLevel: 'Moderate'
           };
         } catch (error) {
-          console.error(`Error fetching fund ${id}:`, error);
+          console.error(`Error fetching fund ${id}:`, error.message);
           return null;
         }
       })
     );
 
-    // Filter out any null values from failed requests
-    const validFundsData = fundsData.filter((fund): fund is MutualFund => fund !== null);
-    console.log('Successfully fetched funds data:', validFundsData);
+    // Filter out failed requests and null values
+    const validFundsData = fundsData
+      .filter((result): result is PromiseFulfilledResult<MutualFund | null> => 
+        result.status === 'fulfilled' && result.value !== null
+      )
+      .map(result => result.value as MutualFund);
+
+    console.log(`Successfully fetched ${validFundsData.length} funds`);
     return validFundsData;
   } catch (error) {
     console.error('Error fetching mutual funds:', error);
@@ -76,13 +87,20 @@ export const getFundHistory = async (fundId: string): Promise<HistoricalData[]> 
   console.log(`Fetching history for fund ${fundId}`);
   try {
     const response = await axios.get(`${BASE_URL}/mf/${fundId}`);
-    if (!response.data || !response.data.data) {
+    if (!response.data?.data) {
       throw new Error('Invalid response format');
     }
-    return response.data.data.slice(0, 365).map((item: any) => ({
-      date: item.date,
-      nav: parseFloat(item.nav)
-    })).reverse(); // Reverse to show oldest to newest
+    
+    const history = response.data.data
+      .slice(0, 365)
+      .map((item: any) => ({
+        date: item.date,
+        nav: parseFloat(item.nav)
+      }))
+      .reverse(); // Reverse to show oldest to newest
+
+    console.log(`Successfully fetched history for fund ${fundId}: ${history.length} days`);
+    return history;
   } catch (error) {
     console.error('Error fetching fund history:', error);
     throw error;
