@@ -39,6 +39,15 @@ const Index = () => {
     return total + (currentValue - investedValue);
   }, 0);
 
+  const totalInvestedValue = Object.values(portfolio).reduce(
+    (total, { units, purchaseNav }) => total + units * purchaseNav,
+    0
+  );
+
+  const totalReturnPercentage = totalInvestedValue > 0 
+    ? ((totalReturns / totalInvestedValue) * 100).toFixed(2)
+    : '0.00';
+
   const handleBuy = (fund: MutualFund, units: number) => {
     console.log(`Buying ${units} units of ${fund.name}`);
     setPortfolio(prev => ({
@@ -107,7 +116,7 @@ const Index = () => {
             <div className="ml-4">
               <p className="text-sm text-gray-400">Total Returns</p>
               <p className="text-2xl font-bold text-green-400">
-                ₹{totalReturns.toFixed(2)} ({((totalReturns / (portfolioValue - totalReturns)) * 100).toFixed(2)}%)
+                ₹{totalReturns.toFixed(2)} ({totalReturnPercentage}%)
               </p>
             </div>
           </div>
