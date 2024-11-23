@@ -15,7 +15,8 @@ const Login = () => {
         console.log("User authenticated:", session.user.id);
         navigate("/");
       }
-      if (event === 'USER_SIGNUP_ERROR') {
+      // Handle signup errors through the auth state change event
+      if (event === "SIGNUP" && !session) {
         toast.error("This email is already registered. Please try logging in instead.");
       }
     });
@@ -37,13 +38,6 @@ const Login = () => {
           appearance={{ theme: ThemeSupa }}
           theme="light"
           providers={[]}
-          onError={(error) => {
-            if (error.message.includes("User already registered")) {
-              toast.error("This email is already registered. Please try logging in instead.");
-            } else {
-              toast.error(error.message);
-            }
-          }}
         />
       </div>
     </div>
