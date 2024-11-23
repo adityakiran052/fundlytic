@@ -4,7 +4,7 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { AuthError, AuthResponse, AuthChangeEvent } from "@supabase/supabase-js";
+import type { AuthChangeEvent } from "@supabase/supabase-js";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -37,24 +37,8 @@ const Login = () => {
       }
 
       // Handle registration and login errors
-      switch (event) {
-        case "SIGNED_UP":
-          if (!session) {
-            toast.error("Registration failed. Please try again.");
-          }
-          break;
-        
-        case "SIGNED_IN":
-          if (!session) {
-            toast.error("Invalid login credentials. Please try again.");
-          }
-          break;
-          
-        case "PASSWORD_RECOVERY":
-          if (!session) {
-            toast.error("Password recovery failed. Please try again.");
-          }
-          break;
+      if (event === "USER_UPDATED" && !session) {
+        toast.error("Authentication failed. Please try again.");
       }
     });
 
@@ -62,13 +46,13 @@ const Login = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="max-w-md w-full space-y-8 p-8 bg-card rounded-xl shadow-lg">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+          <h2 className="mt-6 text-3xl font-bold text-foreground">
             Welcome to MutualFund App
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Sign in to manage your portfolio
           </p>
         </div>
