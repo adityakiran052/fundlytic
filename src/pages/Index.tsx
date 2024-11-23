@@ -16,6 +16,7 @@ const Index = () => {
   const [selectedFund, setSelectedFund] = useState<MutualFund | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio>({});
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(10000);
 
   const { data: funds = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['mutualFunds'],
@@ -28,7 +29,13 @@ const Index = () => {
   );
 
   const handleBuy = (fund: MutualFund, units: number) => {
-    console.log(`Buying ${units} units of ${fund.name}`);
+    const totalCost = units * fund.nav;
+    
+    if (totalCost > walletBalance) {
+      return false;
+    }
+
+    setWalletBalance(prev => prev - totalCost);
     setPortfolio(prev => ({
       ...prev,
       [fund.id]: {
@@ -37,17 +44,19 @@ const Index = () => {
         purchaseNav: fund.nav
       }
     }));
+    
+    return true;
   };
 
   const handleSell = (fund: MutualFund, units: number) => {
-    console.log(`Selling ${units} units of ${fund.name}`);
+    const currentHolding = portfolio[fund.id];
+    if (!currentHolding || currentHolding.units < units) return;
+
+    const saleValue = units * fund.nav;
+    setWalletBalance(prev => prev + saleValue);
+
     setPortfolio(prev => {
-      const currentUnits = prev[fund.id]?.units || 0;
-      if (currentUnits < units) {
-        alert("Not enough units to sell");
-        return prev;
-      }
-      const newUnits = currentUnits - units;
+      const newUnits = currentHolding.units - units;
       if (newUnits === 0) {
         const { [fund.id]: _, ...rest } = prev;
         return rest;
@@ -60,6 +69,10 @@ const Index = () => {
         }
       };
     });
+  };
+
+  const handleAddMoney = (amount: number) => {
+    setWalletBalance(prev => prev + amount);
   };
 
   if (isLoading) return <div className="min-h-screen p-6"><LoadingState /></div>;
@@ -75,6 +88,8 @@ const Index = () => {
       <PortfolioStats 
         portfolio={portfolio}
         onFundsClick={() => setIsPortfolioModalOpen(true)}
+        walletBalance={walletBalance}
+        onAddMoney={handleAddMoney}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -125,6 +140,7 @@ const Index = () => {
               onBuy={handleBuy}
               onSell={handleSell}
               currentHolding={portfolio[selectedFund.id]}
+              walletBalance={walletBalance}
             />
           ) : (
             <div className="text-center text-gray-400">

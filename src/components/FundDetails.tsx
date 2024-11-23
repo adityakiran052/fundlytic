@@ -8,15 +8,16 @@ import { toast } from 'sonner';
 
 interface FundDetailsProps {
   fund: MutualFund;
-  onBuy: (fund: MutualFund, units: number) => void;
+  onBuy: (fund: MutualFund, units: number) => boolean;
   onSell: (fund: MutualFund, units: number) => void;
   currentHolding?: {
     units: number;
     purchaseNav: number;
   };
+  walletBalance: number;
 }
 
-export const FundDetails = ({ fund, onBuy, onSell, currentHolding }: FundDetailsProps) => {
+export const FundDetails = ({ fund, onBuy, onSell, currentHolding, walletBalance }: FundDetailsProps) => {
   const { data: historicalData, isLoading } = useQuery({
     queryKey: ['fundHistory', fund.id],
     queryFn: () => getFundHistory(fund.id),
@@ -25,14 +26,27 @@ export const FundDetails = ({ fund, onBuy, onSell, currentHolding }: FundDetails
   const handleBuy = () => {
     const units = prompt('Enter number of units to buy:');
     if (units && !isNaN(Number(units)) && Number(units) > 0) {
-      onBuy(fund, Number(units));
-      toast.success(`Bought ${units} units of ${fund.name}`);
+      const totalCost = Number(units) * fund.nav;
+      
+      if (totalCost > walletBalance) {
+        toast.error(`Insufficient balance. Required: ₹${totalCost.toFixed(2)}, Available: ₹${walletBalance.toFixed(2)}`);
+        return;
+      }
+
+      const success = onBuy(fund, Number(units));
+      if (success) {
+        toast.success(`Bought ${units} units of ${fund.name}`);
+      }
     }
   };
 
   const handleSell = () => {
     const units = prompt('Enter number of units to sell:');
     if (units && !isNaN(Number(units)) && Number(units) > 0) {
+      if (!currentHolding || currentHolding.units < Number(units)) {
+        toast.error(`Not enough units to sell. Available: ${currentHolding?.units || 0}`);
+        return;
+      }
       onSell(fund, Number(units));
       toast.success(`Sold ${units} units of ${fund.name}`);
     }
