@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
 import { getMutualFunds, type MutualFund } from "../services/mutualFundService";
 import { FundDetails } from "../components/FundDetails";
-import { Input } from "../components/ui/input";
-import { Card } from "../components/ui/card";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { PortfolioStats } from "../components/PortfolioStats";
 import { PortfolioModal } from "../components/PortfolioModal";
+import { Header } from "../components/Header";
+import { FundList } from "../components/FundList";
 import type { Portfolio } from "../types/portfolio";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -258,10 +257,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen p-6 animate-fade-in">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, Investor</h1>
-        <p className="text-gray-400">Your portfolio is performing well today</p>
-      </header>
+      <Header />
 
       <PortfolioStats 
         portfolio={portfolio}
@@ -271,47 +267,13 @@ const Index = () => {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card p-6 rounded-xl">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Available Funds</h2>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                type="text"
-                placeholder="Search funds..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-4 max-h-[600px] overflow-y-auto">
-            {funds.filter(fund => 
-              fund.name.toLowerCase().includes(searchTerm.toLowerCase())
-            ).map((fund) => (
-              <Card
-                key={fund.id}
-                className="p-4 hover:bg-card-hover transition-colors cursor-pointer"
-                onClick={() => setSelectedFund(fund)}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">{fund.name}</h3>
-                    <p className="text-sm text-gray-400">NAV: ₹{fund.nav}</p>
-                  </div>
-                  <div>
-                    <p className="text-green-400 font-medium">{fund.return1y}</p>
-                    {portfolio[fund.id] && (
-                      <p className="text-sm text-gray-400">
-                        Units: {portfolio[fund.id].units}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
+        <FundList
+          funds={funds}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onSelectFund={setSelectedFund}
+          portfolio={portfolio}
+        />
 
         <div className="glass-card p-6 rounded-xl">
           {selectedFund ? (
