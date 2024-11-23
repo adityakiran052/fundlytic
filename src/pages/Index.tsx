@@ -20,7 +20,7 @@ const Index = () => {
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
 
-  const { data: funds = [], isLoading, isError, refetch } = useQuery({
+  const { data: funds = [], isLoading: isFundsLoading, isError, refetch } = useQuery({
     queryKey: ['mutualFunds'],
     queryFn: getMutualFunds,
     retry: 2,
@@ -29,22 +29,22 @@ const Index = () => {
   // Fetch user's data on component mount
   useEffect(() => {
     const fetchUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        console.error("No authenticated user found");
-        return;
-      }
-
-      console.log("Fetching data for user:", user.id);
-
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.error("No authenticated user found");
+          return;
+        }
+
+        console.log("Fetching data for user:", user.id);
+
         // Fetch wallet with error handling
         const { data: walletData, error: walletError } = await supabase
           .from('wallets')
           .select('*')
           .eq('user_id', user.id)
-          .maybeSingle(); // Use maybeSingle() instead of single()
+          .maybeSingle();
 
         if (walletError) {
           console.error("Error fetching wallet:", walletError);
@@ -88,7 +88,7 @@ const Index = () => {
           return;
         }
 
-        if (holdings) {
+        if (holdings && funds.length > 0) {
           console.log("Portfolio holdings found:", holdings.length);
           const portfolioData: Portfolio = {};
           holdings.forEach(holding => {
@@ -109,8 +109,10 @@ const Index = () => {
       }
     };
 
-    fetchUserData();
-  }, [funds]);
+    if (funds.length > 0) {
+      fetchUserData();
+    }
+  }, [funds]); // Add funds as a dependency
 
   const handleBuy = async (fund: MutualFund, units: number): Promise<boolean> => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -251,11 +253,7 @@ const Index = () => {
     setWalletBalance(prev => prev + amount);
   };
 
-  const filteredFunds = funds.filter(fund => 
-    fund.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  if (isLoading) return <div className="min-h-screen p-6"><LoadingState /></div>;
+  if (isFundsLoading) return <div className="min-h-screen p-6"><LoadingState /></div>;
   if (isError) return <div className="min-h-screen p-6"><ErrorState onRetry={() => refetch()} /></div>;
 
   return (
