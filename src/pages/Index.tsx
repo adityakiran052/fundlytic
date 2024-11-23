@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { getMutualFunds, type MutualFund } from "../services/mutualFundService";
@@ -10,13 +10,15 @@ import { ErrorState } from "../components/ErrorState";
 import { PortfolioStats } from "../components/PortfolioStats";
 import { PortfolioModal } from "../components/PortfolioModal";
 import type { Portfolio } from "../types/portfolio";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFund, setSelectedFund] = useState<MutualFund | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio>({});
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(10000);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const { data: funds = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['mutualFunds'],
@@ -24,14 +26,101 @@ const Index = () => {
     retry: 2,
   });
 
-  const filteredFunds = funds.filter(fund => 
-    fund.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Fetch user's data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Please sign in to manage your portfolio");
+        return;
+      }
 
-  const handleBuy = (fund: MutualFund, units: number) => {
+      // Fetch wallet
+      const { data: walletData } = await supabase
+        .from('wallets')
+        .select('*')
+        .single();
+
+      if (!walletData) {
+        // Create wallet if it doesn't exist
+        const { data: newWallet } = await supabase
+          .from('wallets')
+          .insert([{ user_id: user.id, balance: 10000 }])
+          .select()
+          .single();
+          
+        if (newWallet) {
+          setWalletBalance(newWallet.balance);
+        }
+      } else {
+        setWalletBalance(walletData.balance);
+      }
+
+      // Fetch portfolio holdings
+      const { data: holdings } = await supabase
+        .from('portfolio_holdings')
+        .select('*');
+
+      if (holdings) {
+        const portfolioData: Portfolio = {};
+        holdings.forEach(holding => {
+          const fund = funds.find(f => f.id === holding.fund_id);
+          if (fund) {
+            portfolioData[holding.fund_id] = {
+              units: holding.units,
+              fund,
+              purchaseNav: holding.purchase_nav
+            };
+          }
+        });
+        setPortfolio(portfolioData);
+      }
+    };
+
+    fetchUserData();
+  }, [funds]);
+
+  const handleBuy = async (fund: MutualFund, units: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Please sign in to buy funds");
+      return false;
+    }
+
     const totalCost = units * fund.nav;
     
     if (totalCost > walletBalance) {
+      return false;
+    }
+
+    // Start transaction
+    const { error: walletError } = await supabase
+      .from('wallets')
+      .update({ balance: walletBalance - totalCost })
+      .eq('user_id', user.id);
+
+    if (walletError) {
+      toast.error("Failed to update wallet");
+      return false;
+    }
+
+    const { error: portfolioError } = await supabase
+      .from('portfolio_holdings')
+      .insert([{
+        user_id: user.id,
+        fund_id: fund.id,
+        units,
+        purchase_nav: fund.nav
+      }]);
+
+    if (portfolioError) {
+      toast.error("Failed to update portfolio");
+      // Rollback wallet change
+      await supabase
+        .from('wallets')
+        .update({ balance: walletBalance })
+        .eq('user_id', user.id);
       return false;
     }
 
@@ -48,13 +137,47 @@ const Index = () => {
     return true;
   };
 
-  const handleSell = (fund: MutualFund, units: number) => {
+  const handleSell = async (fund: MutualFund, units: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Please sign in to sell funds");
+      return;
+    }
+
     const currentHolding = portfolio[fund.id];
     if (!currentHolding || currentHolding.units < units) return;
 
     const saleValue = units * fund.nav;
-    setWalletBalance(prev => prev + saleValue);
 
+    // Update wallet
+    const { error: walletError } = await supabase
+      .from('wallets')
+      .update({ balance: walletBalance + saleValue })
+      .eq('user_id', user.id);
+
+    if (walletError) {
+      toast.error("Failed to update wallet");
+      return;
+    }
+
+    // Update portfolio
+    const { error: portfolioError } = await supabase
+      .from('portfolio_holdings')
+      .update({ units: currentHolding.units - units })
+      .eq('user_id', user.id)
+      .eq('fund_id', fund.id);
+
+    if (portfolioError) {
+      toast.error("Failed to update portfolio");
+      // Rollback wallet change
+      await supabase
+        .from('wallets')
+        .update({ balance: walletBalance })
+        .eq('user_id', user.id);
+      return;
+    }
+
+    setWalletBalance(prev => prev + saleValue);
     setPortfolio(prev => {
       const newUnits = currentHolding.units - units;
       if (newUnits === 0) {
@@ -71,9 +194,29 @@ const Index = () => {
     });
   };
 
-  const handleAddMoney = (amount: number) => {
+  const handleAddMoney = async (amount: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Please sign in to add money");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('wallets')
+      .update({ balance: walletBalance + amount })
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error("Failed to add money to wallet");
+      return;
+    }
+
     setWalletBalance(prev => prev + amount);
   };
+
+  const filteredFunds = funds.filter(fund => 
+    fund.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (isLoading) return <div className="min-h-screen p-6"><LoadingState /></div>;
   if (isError) return <div className="min-h-screen p-6"><ErrorState onRetry={() => refetch()} /></div>;
