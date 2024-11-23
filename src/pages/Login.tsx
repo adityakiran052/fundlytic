@@ -61,7 +61,7 @@ const Login = () => {
               sign_up: {
                 button_label: "Sign up",
                 email_label: "Email",
-                password_label: "Create a Password",
+                password_label: "Create a Password (minimum 6 characters)",
                 loading_button_label: "Creating account ...",
                 social_provider_text: "Sign in with",
                 confirmation_text: "Check your email for the confirmation link",
