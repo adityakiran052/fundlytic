@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 interface FundDetailsProps {
   fund: MutualFund;
-  onBuy: (fund: MutualFund, units: number) => boolean;
+  onBuy: (fund: MutualFund, units: number) => Promise<boolean>;
   onSell: (fund: MutualFund, units: number) => void;
   currentHolding?: {
     units: number;
@@ -23,7 +23,7 @@ export const FundDetails = ({ fund, onBuy, onSell, currentHolding, walletBalance
     queryFn: () => getFundHistory(fund.id),
   });
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     const units = prompt('Enter number of units to buy:');
     if (units && !isNaN(Number(units)) && Number(units) > 0) {
       const totalCost = Number(units) * fund.nav;
@@ -33,7 +33,7 @@ export const FundDetails = ({ fund, onBuy, onSell, currentHolding, walletBalance
         return;
       }
 
-      const success = onBuy(fund, Number(units));
+      const success = await onBuy(fund, Number(units));
       if (success) {
         toast.success(`Bought ${units} units of ${fund.name}`);
       }

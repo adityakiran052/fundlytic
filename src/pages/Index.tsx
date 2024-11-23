@@ -81,7 +81,7 @@ const Index = () => {
     fetchUserData();
   }, [funds]);
 
-  const handleBuy = async (fund: MutualFund, units: number) => {
+  const handleBuy = async (fund: MutualFund, units: number): Promise<boolean> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast.error("Please sign in to buy funds");
@@ -94,47 +94,53 @@ const Index = () => {
       return false;
     }
 
-    // Start transaction
-    const { error: walletError } = await supabase
-      .from('wallets')
-      .update({ balance: walletBalance - totalCost })
-      .eq('user_id', user.id);
-
-    if (walletError) {
-      toast.error("Failed to update wallet");
-      return false;
-    }
-
-    const { error: portfolioError } = await supabase
-      .from('portfolio_holdings')
-      .insert([{
-        user_id: user.id,
-        fund_id: fund.id,
-        units,
-        purchase_nav: fund.nav
-      }]);
-
-    if (portfolioError) {
-      toast.error("Failed to update portfolio");
-      // Rollback wallet change
-      await supabase
+    try {
+      // Start transaction
+      const { error: walletError } = await supabase
         .from('wallets')
-        .update({ balance: walletBalance })
+        .update({ balance: walletBalance - totalCost })
         .eq('user_id', user.id);
+
+      if (walletError) {
+        toast.error("Failed to update wallet");
+        return false;
+      }
+
+      const { error: portfolioError } = await supabase
+        .from('portfolio_holdings')
+        .insert([{
+          user_id: user.id,
+          fund_id: fund.id,
+          units,
+          purchase_nav: fund.nav
+        }]);
+
+      if (portfolioError) {
+        toast.error("Failed to update portfolio");
+        // Rollback wallet change
+        await supabase
+          .from('wallets')
+          .update({ balance: walletBalance })
+          .eq('user_id', user.id);
+        return false;
+      }
+
+      setWalletBalance(prev => prev - totalCost);
+      setPortfolio(prev => ({
+        ...prev,
+        [fund.id]: {
+          units: (prev[fund.id]?.units || 0) + units,
+          fund,
+          purchaseNav: fund.nav
+        }
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error('Transaction failed:', error);
+      toast.error("Transaction failed");
       return false;
     }
-
-    setWalletBalance(prev => prev - totalCost);
-    setPortfolio(prev => ({
-      ...prev,
-      [fund.id]: {
-        units: (prev[fund.id]?.units || 0) + units,
-        fund,
-        purchaseNav: fund.nav
-      }
-    }));
-    
-    return true;
   };
 
   const handleSell = async (fund: MutualFund, units: number) => {
