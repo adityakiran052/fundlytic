@@ -4,19 +4,20 @@ import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AuthChangeEvent } from "@supabase/supabase-js";
 
 const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user is already logged in
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
       if (session) {
         console.log("User authenticated:", session.user.id);
         navigate("/");
       }
       // Handle signup errors through the auth state change event
-      if (event === "SIGNED_UP" && !session) {
+      if (event === "SIGNED_OUT" && !session) {
         toast.error("This email is already registered. Please try logging in instead.");
       }
     });
