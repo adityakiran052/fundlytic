@@ -1,25 +1,21 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, TrendingUp, PieChart, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { getMutualFunds, type MutualFund } from "../services/mutualFundService";
 import { FundDetails } from "../components/FundDetails";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
-
-interface Portfolio {
-  [fundId: string]: {
-    units: number;
-    fund: MutualFund;
-    purchaseNav: number;
-  };
-}
+import { PortfolioStats } from "../components/PortfolioStats";
+import { PortfolioModal } from "../components/PortfolioModal";
+import type { Portfolio } from "../types/portfolio";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFund, setSelectedFund] = useState<MutualFund | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio>({});
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
 
   const { data: funds = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['mutualFunds'],
@@ -30,26 +26,6 @@ const Index = () => {
   const filteredFunds = funds.filter(fund => 
     fund.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const portfolioValue = Object.values(portfolio).reduce(
-    (total, { units, fund }) => total + units * fund.nav,
-    0
-  );
-
-  const totalReturns = Object.values(portfolio).reduce((total, { units, fund, purchaseNav }) => {
-    const currentValue = units * fund.nav;
-    const investedValue = units * purchaseNav;
-    return total + (currentValue - investedValue);
-  }, 0);
-
-  const totalInvestedValue = Object.values(portfolio).reduce(
-    (total, { units, purchaseNav }) => total + units * purchaseNav,
-    0
-  );
-
-  const totalReturnPercentage = totalInvestedValue > 0 
-    ? ((totalReturns / totalInvestedValue) * 100).toFixed(2)
-    : '0.00';
 
   const handleBuy = (fund: MutualFund, units: number) => {
     console.log(`Buying ${units} units of ${fund.name}`);
@@ -86,21 +62,8 @@ const Index = () => {
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen p-6">
-        <LoadingState />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="min-h-screen p-6">
-        <ErrorState onRetry={() => refetch()} />
-      </div>
-    );
-  }
+  if (isLoading) return <div className="min-h-screen p-6"><LoadingState /></div>;
+  if (isError) return <div className="min-h-screen p-6"><ErrorState onRetry={() => refetch()} /></div>;
 
   return (
     <div className="min-h-screen p-6 animate-fade-in">
@@ -109,48 +72,10 @@ const Index = () => {
         <p className="text-gray-400">Your portfolio is performing well today</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="glass-card p-6 rounded-xl">
-          <div className="flex items-center mb-4">
-            <div className="p-3 bg-primary/20 rounded-lg">
-              <DollarSign className="text-primary h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-400">Portfolio Value</p>
-              <p className="text-2xl font-bold">₹{portfolioValue.toFixed(2)}</p>
-            </div>
-          </div>
-          <div className="text-green-400 text-sm">Live value</div>
-        </div>
-
-        <div className="glass-card p-6 rounded-xl">
-          <div className="flex items-center mb-4">
-            <div className="p-3 bg-accent/20 rounded-lg">
-              <TrendingUp className="text-accent h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-400">Total Returns</p>
-              <p className="text-2xl font-bold text-green-400">
-                ₹{totalReturns.toFixed(2)} ({totalReturnPercentage}%)
-              </p>
-            </div>
-          </div>
-          <div className="text-primary text-sm">Live returns</div>
-        </div>
-
-        <div className="glass-card p-6 rounded-xl">
-          <div className="flex items-center mb-4">
-            <div className="p-3 bg-primary/20 rounded-lg">
-              <PieChart className="text-primary h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-400">Funds Invested</p>
-              <p className="text-2xl font-bold">{Object.keys(portfolio).length}</p>
-            </div>
-          </div>
-          <div className="text-gray-400 text-sm">Active investments</div>
-        </div>
-      </div>
+      <PortfolioStats 
+        portfolio={portfolio}
+        onFundsClick={() => setIsPortfolioModalOpen(true)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="glass-card p-6 rounded-xl">
@@ -208,6 +133,12 @@ const Index = () => {
           )}
         </div>
       </div>
+
+      <PortfolioModal
+        isOpen={isPortfolioModalOpen}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        portfolio={portfolio}
+      />
     </div>
   );
 };
