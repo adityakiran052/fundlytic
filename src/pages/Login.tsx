@@ -59,7 +59,12 @@ const Login = () => {
           localization={{
             variables: {
               sign_up: {
-                email_exists_error: "This email is already registered. Please try logging in instead.",
+                button_label: "Sign up",
+                email_label: "Email",
+                password_label: "Create a Password",
+                loading_button_label: "Creating account ...",
+                social_provider_text: "Sign in with",
+                confirmation_text: "Check your email for the confirmation link",
               },
             },
           }}
