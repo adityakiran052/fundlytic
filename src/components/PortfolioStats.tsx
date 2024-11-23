@@ -6,10 +6,11 @@ import { WalletModal } from "./WalletModal";
 interface PortfolioStatsProps {
   portfolio: Portfolio;
   onFundsClick: () => void;
+  walletBalance: number;
+  onAddMoney: (amount: number) => void;
 }
 
-export const PortfolioStats = ({ portfolio, onFundsClick }: PortfolioStatsProps) => {
-  const [walletBalance, setWalletBalance] = useState(10000); // Demo initial balance
+export const PortfolioStats = ({ portfolio, onFundsClick, walletBalance, onAddMoney }: PortfolioStatsProps) => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
   const portfolioValue = Object.values(portfolio).reduce(
@@ -43,10 +44,6 @@ export const PortfolioStats = ({ portfolio, onFundsClick }: PortfolioStatsProps)
   const expectedReturnPercentage = totalInvestedValue > 0
     ? ((expectedReturns / totalInvestedValue) * 100).toFixed(2)
     : '0.00';
-
-  const handleAddMoney = (amount: number) => {
-    setWalletBalance(prev => prev + amount);
-  };
 
   return (
     <>
@@ -115,7 +112,7 @@ export const PortfolioStats = ({ portfolio, onFundsClick }: PortfolioStatsProps)
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
         balance={walletBalance}
-        onAddMoney={handleAddMoney}
+        onAddMoney={onAddMoney}
       />
     </>
   );
