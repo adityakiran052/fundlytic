@@ -24,14 +24,16 @@ const Login = () => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session) => {
       console.log("Auth state changed:", event);
-      if (session) {
+      
+      if (event === "USER_UPDATED" && session) {
         console.log("User authenticated:", session.user.id);
         navigate("/");
       }
-      if (event === "SIGNED_OUT" && !session) {
-        toast.error("This email is already registered. Please try logging in instead.");
+      
+      if (event === "SIGNED_OUT") {
+        console.log("User signed out");
       }
     });
 
@@ -54,6 +56,14 @@ const Login = () => {
           appearance={{ theme: ThemeSupa }}
           theme="light"
           providers={[]}
+          onError={(error) => {
+            console.error("Auth error:", error);
+            if (error.message.includes("User already registered")) {
+              toast.error("This email is already registered. Please try logging in instead.");
+            } else {
+              toast.error(error.message);
+            }
+          }}
         />
       </div>
     </div>
