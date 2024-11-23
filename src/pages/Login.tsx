@@ -16,7 +16,7 @@ const Login = () => {
         navigate("/");
       }
       // Handle signup errors through the auth state change event
-      if (event === "SIGNUP" && !session) {
+      if (event === "SIGNED_UP" && !session) {
         toast.error("This email is already registered. Please try logging in instead.");
       }
     });
