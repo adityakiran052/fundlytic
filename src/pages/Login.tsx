@@ -56,13 +56,12 @@ const Login = () => {
           appearance={{ theme: ThemeSupa }}
           theme="light"
           providers={[]}
-          onError={(error) => {
-            console.error("Auth error:", error);
-            if (error.message.includes("User already registered")) {
-              toast.error("This email is already registered. Please try logging in instead.");
-            } else {
-              toast.error(error.message);
-            }
+          localization={{
+            variables: {
+              sign_up: {
+                email_exists_error: "This email is already registered. Please try logging in instead.",
+              },
+            },
           }}
         />
       </div>
