@@ -3,6 +3,7 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -33,6 +34,11 @@ const Login = () => {
           appearance={{ theme: ThemeSupa }}
           theme="light"
           providers={[]}
+          onError={(error) => {
+            console.error("Auth error:", error);
+            toast.error(error.message);
+          }}
+          redirectTo={window.location.origin}
         />
       </div>
     </div>
