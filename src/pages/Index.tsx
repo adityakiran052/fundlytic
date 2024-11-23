@@ -5,6 +5,8 @@ import { getMutualFunds, type MutualFund } from "../services/mutualFundService";
 import { FundDetails } from "../components/FundDetails";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
+import { LoadingState } from "../components/LoadingState";
+import { ErrorState } from "../components/ErrorState";
 
 interface Portfolio {
   [fundId: string]: {
@@ -19,9 +21,10 @@ const Index = () => {
   const [selectedFund, setSelectedFund] = useState<MutualFund | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio>({});
 
-  const { data: funds = [], isLoading } = useQuery({
+  const { data: funds = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['mutualFunds'],
     queryFn: getMutualFunds,
+    retry: 2,
   });
 
   const filteredFunds = funds.filter(fund => 
@@ -84,7 +87,19 @@ const Index = () => {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen p-6">Loading...</div>;
+    return (
+      <div className="min-h-screen p-6">
+        <LoadingState />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen p-6">
+        <ErrorState onRetry={() => refetch()} />
+      </div>
+    );
   }
 
   return (
