@@ -32,37 +32,63 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast.error("Please sign in to manage your portfolio");
+        console.error("No authenticated user found");
         return;
       }
 
+      console.log("Fetching data for user:", user.id);
+
       // Fetch wallet
-      const { data: walletData } = await supabase
+      const { data: walletData, error: walletError } = await supabase
         .from('wallets')
         .select('*')
+        .eq('user_id', user.id)
         .single();
 
+      if (walletError && walletError.code !== 'PGRST116') {
+        console.error("Error fetching wallet:", walletError);
+        toast.error("Failed to fetch wallet data");
+        return;
+      }
+
       if (!walletData) {
+        console.log("Creating new wallet for user");
         // Create wallet if it doesn't exist
-        const { data: newWallet } = await supabase
+        const { data: newWallet, error: createError } = await supabase
           .from('wallets')
           .insert([{ user_id: user.id, balance: 10000 }])
           .select()
           .single();
           
+        if (createError) {
+          console.error("Error creating wallet:", createError);
+          toast.error("Failed to create wallet");
+          return;
+        }
+
         if (newWallet) {
+          console.log("New wallet created with balance:", newWallet.balance);
           setWalletBalance(newWallet.balance);
         }
       } else {
+        console.log("Existing wallet found with balance:", walletData.balance);
         setWalletBalance(walletData.balance);
       }
 
       // Fetch portfolio holdings
-      const { data: holdings } = await supabase
+      const { data: holdings, error: holdingsError } = await supabase
         .from('portfolio_holdings')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (holdingsError) {
+        console.error("Error fetching holdings:", holdingsError);
+        toast.error("Failed to fetch portfolio holdings");
+        return;
+      }
 
       if (holdings) {
+        console.log("Portfolio holdings found:", holdings.length);
         const portfolioData: Portfolio = {};
         holdings.forEach(holding => {
           const fund = funds.find(f => f.id === holding.fund_id);
@@ -257,7 +283,9 @@ const Index = () => {
             </div>
           </div>
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
-            {filteredFunds.map((fund) => (
+            {funds.filter(fund => 
+              fund.name.toLowerCase().includes(searchTerm.toLowerCase())
+            ).map((fund) => (
               <Card
                 key={fund.id}
                 className="p-4 hover:bg-card-hover transition-colors cursor-pointer"
