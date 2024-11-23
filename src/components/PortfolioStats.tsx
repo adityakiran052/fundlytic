@@ -40,7 +40,7 @@ export const PortfolioStats = ({ portfolio, onFundsClick }: PortfolioStatsProps)
     : '0.00';
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <div className="glass-card p-6 rounded-xl">
         <div className="flex items-center mb-4">
           <div className="p-3 bg-primary/20 rounded-lg">
@@ -52,6 +52,19 @@ export const PortfolioStats = ({ portfolio, onFundsClick }: PortfolioStatsProps)
           </div>
         </div>
         <div className="text-green-400 text-sm">Live value</div>
+      </div>
+
+      <div className="glass-card p-6 rounded-xl">
+        <div className="flex items-center mb-4">
+          <div className="p-3 bg-primary/20 rounded-lg">
+            <DollarSign className="text-primary h-6 w-6" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm text-gray-400">Total Balance</p>
+            <p className="text-2xl font-bold">₹{totalInvestedValue.toFixed(2)}</p>
+          </div>
+        </div>
+        <div className="text-blue-400 text-sm">Total invested amount</div>
       </div>
 
       <div className="glass-card p-6 rounded-xl">
