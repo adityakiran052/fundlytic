@@ -35,6 +35,14 @@ const Login = () => {
       if (event === "SIGNED_OUT") {
         console.log("User signed out");
       }
+
+      // Handle signup errors
+      if (event === "USER_DELETED") {
+        const error = session?.error;
+        if (error?.message.includes("User already registered")) {
+          toast.error("This email is already registered. Please try signing in instead.");
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
