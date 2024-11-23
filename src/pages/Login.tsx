@@ -12,7 +12,7 @@ const Login = () => {
     // Check if user is already logged in
     supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        console.log("User is authenticated:", session.user.id);
+        console.log("User authenticated:", session.user.id);
         navigate("/");
       }
     });
@@ -34,7 +34,6 @@ const Login = () => {
           appearance={{ theme: ThemeSupa }}
           theme="light"
           providers={[]}
-          redirectTo={window.location.origin}
         />
       </div>
     </div>
