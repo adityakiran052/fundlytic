@@ -1,10 +1,10 @@
+import { useNavigate } from "react-router-dom";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
-import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { AuthError } from "@supabase/supabase-js";
+import type { AuthError } from "@supabase/supabase-js";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ const Login = () => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event);
       
       if (event === "SIGNED_IN" && session) {
@@ -36,15 +36,19 @@ const Login = () => {
         console.log("User signed out");
       }
 
-      if (event === "USER_REGISTRATION_ERROR") {
-        const error = session as unknown as { error: AuthError };
-        if (error?.error?.message.includes("User already registered")) {
-          toast.error("This email is already registered. Please try signing in instead.");
-        }
-      }
-
-      if (event === "PASSWORD_RECOVERY_ERROR" || event === "SIGN_IN_ERROR") {
-        toast.error("Invalid login credentials. Please try again.");
+      // Handle registration and login errors
+      switch (event) {
+        case "USER_REGISTRATION_ERROR":
+          const regError = session as unknown as { error: AuthError };
+          if (regError?.error?.message.includes("User already registered")) {
+            toast.error("This email is already registered. Please try signing in instead.");
+          }
+          break;
+        
+        case "PASSWORD_RECOVERY_ERROR":
+        case "SIGN_IN_ERROR":
+          toast.error("Invalid login credentials. Please try again.");
+          break;
       }
     });
 

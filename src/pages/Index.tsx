@@ -38,69 +38,74 @@ const Index = () => {
 
       console.log("Fetching data for user:", user.id);
 
-      // Fetch wallet
-      const { data: walletData, error: walletError } = await supabase
-        .from('wallets')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (walletError && walletError.code !== 'PGRST116') {
-        console.error("Error fetching wallet:", walletError);
-        toast.error("Failed to fetch wallet data");
-        return;
-      }
-
-      if (!walletData) {
-        console.log("Creating new wallet for user");
-        // Create wallet if it doesn't exist
-        const { data: newWallet, error: createError } = await supabase
+      try {
+        // Fetch wallet with error handling
+        const { data: walletData, error: walletError } = await supabase
           .from('wallets')
-          .insert([{ user_id: user.id, balance: 10000 }])
-          .select()
-          .single();
-          
-        if (createError) {
-          console.error("Error creating wallet:", createError);
-          toast.error("Failed to create wallet");
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle(); // Use maybeSingle() instead of single()
+
+        if (walletError) {
+          console.error("Error fetching wallet:", walletError);
+          toast.error("Failed to fetch wallet data");
           return;
         }
 
-        if (newWallet) {
-          console.log("New wallet created with balance:", newWallet.balance);
-          setWalletBalance(newWallet.balance);
-        }
-      } else {
-        console.log("Existing wallet found with balance:", walletData.balance);
-        setWalletBalance(walletData.balance);
-      }
-
-      // Fetch portfolio holdings
-      const { data: holdings, error: holdingsError } = await supabase
-        .from('portfolio_holdings')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (holdingsError) {
-        console.error("Error fetching holdings:", holdingsError);
-        toast.error("Failed to fetch portfolio holdings");
-        return;
-      }
-
-      if (holdings) {
-        console.log("Portfolio holdings found:", holdings.length);
-        const portfolioData: Portfolio = {};
-        holdings.forEach(holding => {
-          const fund = funds.find(f => f.id === holding.fund_id);
-          if (fund) {
-            portfolioData[holding.fund_id] = {
-              units: holding.units,
-              fund,
-              purchaseNav: holding.purchase_nav
-            };
+        if (!walletData) {
+          console.log("Creating new wallet for user");
+          // Create wallet if it doesn't exist
+          const { data: newWallet, error: createError } = await supabase
+            .from('wallets')
+            .insert([{ user_id: user.id, balance: 10000 }])
+            .select()
+            .single();
+            
+          if (createError) {
+            console.error("Error creating wallet:", createError);
+            toast.error("Failed to create wallet");
+            return;
           }
-        });
-        setPortfolio(portfolioData);
+
+          if (newWallet) {
+            console.log("New wallet created with balance:", newWallet.balance);
+            setWalletBalance(newWallet.balance);
+          }
+        } else {
+          console.log("Existing wallet found with balance:", walletData.balance);
+          setWalletBalance(walletData.balance);
+        }
+
+        // Fetch portfolio holdings
+        const { data: holdings, error: holdingsError } = await supabase
+          .from('portfolio_holdings')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (holdingsError) {
+          console.error("Error fetching holdings:", holdingsError);
+          toast.error("Failed to fetch portfolio holdings");
+          return;
+        }
+
+        if (holdings) {
+          console.log("Portfolio holdings found:", holdings.length);
+          const portfolioData: Portfolio = {};
+          holdings.forEach(holding => {
+            const fund = funds.find(f => f.id === holding.fund_id);
+            if (fund) {
+              portfolioData[holding.fund_id] = {
+                units: holding.units,
+                fund,
+                purchaseNav: holding.purchase_nav
+              };
+            }
+          });
+          setPortfolio(portfolioData);
+        }
+      } catch (error) {
+        console.error("Error in fetchUserData:", error);
+        toast.error("Failed to load user data");
       }
     };
 
